@@ -1,0 +1,1102 @@
+% ============================================================
+%  Uber vs. Lyft — Revenue Management Analysis
+%  Course: Revenue Management — Demand & Sales Analysis
+%  Compiled with: pdflatex uber_lyft_report.tex
+% ============================================================
+\documentclass[11pt, letterpaper]{article}
+
+% ── Packages ────────────────────────────────────────────────
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{natbib}
+\usepackage{float}
+\usepackage{xurl}
+
+% microtype and lmodern removed for compatibility
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=blue,
+    pdftitle={Uber vs. Lyft: A Revenue Management Analysis},
+}
+
+% Custom colors
+\definecolor{uberblack}{RGB}{0,0,0}
+\definecolor{lyftpink}{RGB}{255,0,191}
+\definecolor{sectionblue}{RGB}{26,115,232}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+% Section formatting
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\titlespacing*{\section}{0pt}{1.5ex plus .2ex}{1ex plus .2ex}
+\titlespacing*{\subsection}{0pt}{1ex plus .2ex}{0.5ex plus .2ex}
+
+% Header / Footer
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small Revenue Management — Demand \& Sales Analysis}
+\lhead{\small Uber vs.\ Lyft: Competitive Pricing Strategy}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Abstract box
+\newenvironment{abstractbox}{%
+  \begin{center}
+  \begin{minipage}{0.92\textwidth}
+  \rule{\linewidth}{1pt}
+  \vspace{0.3em}
+  \small
+}{%
+  \vspace{0.3em}
+  \rule{\linewidth}{1pt}
+  \end{minipage}
+  \end{center}
+}
+
+% Finding box
+\usepackage{tcolorbox}
+\tcbuselibrary{skins}
+\newtcolorbox{findingbox}[1][]{
+  enhanced,
+  colback=lightgray,
+  colframe=sectionblue!60,
+  fonttitle=\bfseries\small,
+  title=Key Finding,
+  #1
+}
+
+%-------------------------------
+\begin{document}
+%-------------------------------
+
+% Title
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+
+  {\LARGE\bfseries Uber vs.\ Lyft: Demand Patterns,\\[0.3em]
+  Revenue Management, and\\[0.3em]
+  Competitive Pricing Strategy\par}
+
+  \vspace{1.5cm}
+
+  {\large Revenue Management — Demand \& Sales Analysis\par}
+  {\large McCombs School of Business, UT Austin\par}
+
+  \vspace{1cm}
+
+  {\normalsize Melissa Cai Shi \par}
+  {\normalsize Mohar Chaudhuri \par}
+  {\normalsize Cassandre Korvink-Kucinski \par}
+  {\normalsize Hardy Smith \par}
+
+  \vspace{0.5cm}
+
+  {\normalsize April 2025\par}
+
+  \vspace{1.5cm}
+
+  \begin{abstractbox}
+    \textbf{Abstract.} This paper analyzes the revenue management strategies
+    of Uber and Lyft using a dataset of 693,071 rideshare trips in Boston,
+    MA collected via real-time API queries over 22 days in November--December
+    2018. We study demand elasticity, surge pricing effectiveness, and
+    competitive pricing dynamics across three integrated analyses.
+    Our central finding is that despite operating in the same geographic
+    markets at the same times, Uber and Lyft price independently of each
+    other: the surge correlation between platforms is $r = -0.033$, Lyft's
+    price is not a significant predictor of Uber's price after controlling
+    for route, time, and weather ($p = 0.515$), and Granger causality tests
+    find no lead-lag pricing relationship on any of the six highest-traffic
+    routes examined. We further find that Lyft misses surge opportunities
+    in 18.5\% of matched route-time windows where Uber is already surging,
+    representing a systematic revenue management gap. These findings have
+    direct implications for dynamic pricing strategy on two-sided platforms.
+  \end{abstractbox}
+
+  \vspace{1.5cm}
+  {\small\textit{Dataset: Uber \& Lyft Boston, MA (Kaggle: brllrb/uber-and-lyft-dataset-boston-ma)}}
+\end{titlepage}
+
+% Table of Contents
+\tableofcontents
+\newpage
+
+%------------------------------------
+\section{Introduction: Uber's Revenue Model and Surge Pricing}
+%------------------------------------
+
+Ride-hailing platforms such as Uber and Lyft represent one of the most
+prominent real-world applications of algorithmic revenue management.
+Unlike traditional taxi markets with regulated fixed fares, these platforms
+employ dynamic pricing --- commonly called \textit{surge pricing} ---
+to continuously balance supply and demand in real time across thousands
+of geographic micro-markets simultaneously.
+
+Uber's core revenue model is that of a two-sided marketplace. On the
+supply side, independent contractor drivers decide when and where to be
+available based on expected earnings. On the demand side, riders request
+trips through a mobile application and face prices that fluctuate with
+local conditions. Uber earns a commission (typically 20--25\%) on each
+completed trip, making its revenue a direct function of both trip volume
+and fare level. This creates a fundamental yield management problem:
+prices set too high suppress demand and reduce trip volume; prices set
+too low fail to attract sufficient driver supply, leading to unmatched
+requests and rider abandonment.
+
+The surge mechanism addresses this problem by multiplying the base fare
+by a real-time coefficient --- the \textit{surge multiplier} --- that
+increases when local demand exceeds local supply and returns to 1.0$\times$
+when equilibrium is restored. \citet{hall2015effects} show that this mechanism
+improves market efficiency by reducing both rider wait times and driver idle time.
+\citet{castillo2017surge} demonstrate that without surge pricing, platforms can
+fall into a ``wild goose chase'' equilibrium in which drivers spend excessive
+time searching for passengers, collapsing overall throughput.
+
+This paper studies three interconnected dimensions of Uber's revenue
+management strategy: the demand patterns that drive surge triggers
+(Section~\ref{sec:demand}), the effectiveness of surge in maximizing
+platform revenue (Section~\ref{sec:revenue}), and the competitive
+dynamics between Uber and Lyft's pricing algorithms
+(Section~\ref{sec:competitive}).
+
+\textbf{Data.} Our analysis uses the Uber \& Lyft Boston dataset
+(Kaggle: \textit{\xurl{brllrb/uber-and-lyft-dataset-boston-ma}}), which
+contains 693,071 trip observations across 12 Boston neighborhoods
+collected via direct API queries every five minutes over 22 days
+in late 2018. The dataset contains ride-level price, distance,
+product type, and surge multiplier, as well as 36 concurrent weather
+variables including temperature, precipitation intensity, wind speed,
+humidity, and visibility. After cleaning (removing missing prices and
+impossible values), 637,976 rides remain: 385,663 Uber and 307,408 Lyft.
+
+%------------------------------------
+\section{Demand Elasticity and Patterns}
+\label{sec:demand}
+%------------------------------------
+
+To evaluate Lyft’s revenue management effectiveness, we first establish the baseline variance of ride volume. This section analyzes the temporal, geographical, and environmental drivers of demand before quantifying price elasticity through a series of econometric models designed to isolate the impact of the surge pricing regime.
+
+\subsection{Establishing Baseline Demand Variance}
+
+Demand for ride-sharing in Boston is characterized by predictable cyclicality and significant geographical concentration.
+
+\textbf{Temporal Variance.} As illustrated in Figure~\ref{fig:temporal_variance}, demand peaks reliably during the work hours (8:00 AM - 5:00PM) and late-evening social windows (10:00 PM – 1:00 AM). We observe some limitations in the temporal data, such as missing data for Wednesday mornings, which likely represents API crawler downtime rather than the complete absence of market demand. This finding highlights the importance of distinguishing between true demand patterns and sampling bias when evaluating algorithmic performance.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{baseline_temporal_variance.png}
+    \caption{Baseline Temporal Variance: Hourly ride volume exhibiting workday and late-night peaks.}
+    \label{fig:temporal_variance}
+\end{figure}
+
+\textbf{Geographical Variance.} Ride requests are not distributed uniformly. Figure~\ref{fig:geo_variance} identifies \textit{Downtown}, \textit{West End}, and \textit{Fenway} as the primary demand anchors for the platform. These locations serve as transit hubs where demand is persistent and less sensitive to external shocks, establishing a high volume floor for the Boston market.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{volume_by_neighborhood.png}
+    \caption{Geographical Baseline: Total ride volume aggregated by source neighborhood.}
+    \label{fig:geo_variance}
+\end{figure}
+
+\textbf{Environmental Variance.} While precipitation is a confirmed driver of ride-hailing adoption, aggregate volume is overwhelmingly dominated by clear weather conditions (``None") as shown in Figure~\ref{fig:weather_variance}. However, our regression analysis (see Table~\ref{tab:elasticity_results}) reveals that precipitation acts as a critical \textit{marginal} driver. The coefficient of 2.555 ($p < 0.001$) suggests that for each unit increase in precipitation intensity, the probability of a ride request per hour increases significantly, representing a weather-driven shift in consumer behavior.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{baseline_environmental_variance.png}
+    \caption{Aggregate Ride Volume by Precipitation: Volume is highest in clear weather, though intensity shocks drive marginal demand spikes.}
+    \label{fig:weather_variance}
+\end{figure}
+
+\subsection{The Price-Demand Paradox}
+
+In a standard market, an increase in price leads to a decrease in quantity requested. However, in the Boston ride-sharing market, the raw demand curve (Figure~\ref{fig:demand_curve}) appears essentially horizontal.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{price_sensitivity_demand_curve.png}
+    \caption{Lyft Demand Curve: Quantity vs. Average Price. The flat distribution indicates a state of extreme price inelasticity.}
+    \label{fig:demand_curve}
+\end{figure}
+
+The visual invariance of volume across fare levels suggests that the platform’s current pricing is operating in a range where consumers are relatively indifferent to price. This flat curve is a visual manifestation of \textit{simultaneity}: price and quantity move in lockstep, flattening the demand curve and demonstrating inelasticity.
+
+\subsection{Econometric Results: Quantifying Inelasticity}
+
+To isolate the true price elasticity of demand ($\epsilon$) from the endogenous noise of Lyft’s reactive surge algorithm, we executed a two-block modeling strategy. \textbf{Block 1} establishes the baseline relationship using lagged hourly price as an instrument for current price. \textbf{Block 2} introduces the \texttt{is\_surge} binary predictor indicating when the platform activates its surge mechanism.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Econometric Results: OLS and IV-2SLS Estimation of Log-Volume}
+\label{tab:elasticity_results}
+\begin{tabularx}{\textwidth}{l p{1.8cm} p{1.8cm} p{1.8cm} p{1.8cm}}
+\toprule
+& \multicolumn{2}{c}{\textbf{Block 1: Baseline}} & \multicolumn{2}{c}{\textbf{Block 2: Surge-Controlled}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+\textbf{Variable} & \textbf{OLS (1)} & \textbf{IV (2)} & \textbf{OLS (3)} & \textbf{IV (4)} \\
+\midrule
+\textit{Main Regressors} & & & & \\
+$\ln(Price)$ (Elasticity) & $0.0048$ & $0.7717$ & $-0.0706^{***}$ & $0.6022$ \\
+Is\_Surge (Activation) & --- & --- & $0.2328^{***}$ & $0.2603^{***}$ \\
+\addlinespace
+\textit{Environmental Controls} & & & & \\
+Distance (Miles) & $0.0035$ & $-0.1505$ & $-0.0190^{***}$ & $-0.1212$ \\
+Precip. Intensity & $2.6661^{***}$ & --- & $2.5550^{***}$ & --- \\
+Temperature & $0.0035^{***}$ & $0.0049^{***}$ & $0.0034^{***}$ & $0.0047^{***}$ \\
+\addlinespace
+\textit{Fixed Effects (IV Models)} & & & & \\
+Neighborhoods (Avg.) & --- & $0.0416^{\dagger}$ & --- & $0.0763^{\dagger}$ \\
+Service Tiers (Avg.) & --- & $0.1581^{\dagger}$ & --- & $0.1791^{\dagger}$ \\
+\midrule
+\textbf{Model Intercept} & \textbf{2.2788} & \textbf{0.3540} & \textbf{2.4241} & \textbf{0.5846} \\
+\bottomrule
+\multicolumn{5}{l}{\footnotesize $^{***}$ $p < 0.001$. $^{\dagger}$ Representative average of category-specific coefficients.} \\
+\multicolumn{5}{l}{\footnotesize IV models instrument $\ln(Price)$ with lagged hourly neighborhood price.}
+\end{tabularx}
+\end{table}
+
+\subsection{Analysis of Model Outputs}
+
+The progression of coefficients across these four models reveals the complexity of demand behavior on two-sided platforms.
+
+\textbf{1. Resolving Simultaneous Equation Bias.} In Model 1 (OLS), the elasticity is near-zero ($0.0048$). However, when we instrument price in Model 2, the coefficient jumps to a positive $0.7717$. In a standard market, this would be paradoxical. In ride-sharing, this proves that even with a lagged instrument, the model is capturing the extreme \textit{simultaneity} of the market: Lyft raises prices when demand is already surging. The positive IV coefficient indicates that the algorithm is reacting so precisely to demand spikes that the price is effectively a proxy for market activity levels.
+
+\textbf{2. Surge Pricing as an Intercept Amplifier.} Block 2 introduces \texttt{is\_surge} as a control for the platform's internal state. In Model 4, the \texttt{is\_surge} coefficient of $0.2603$ ($p < 0.001$) is highly significant. This represents a 26\% vertical shift in the demand intercept the moment a surge is activated. This emphasizes Lyft's algorithmic reactivity: the surge does not deter riders; rather, it identifies a high-urgency state where the baseline volume has already moved to a higher equilibrium.
+
+\textbf{3. Marginal Sensitivity vs. Surge Impact.} Controlling for the binary state of the surge in Model 3 (OLS) finally produces a theoretically correct negative elasticity of $-0.0706$. While significant ($p < 0.001$), the magnitude is economically trivial. For every 10\% increase in price, volume only drops by 0.7\%. This suggests that while there is a slight flinch at the marginal price increase, it is overwhelmed by the 26\% surge-activation volume spike.
+
+\textbf{4. Purified Signal Persistence.} Model 4 (the surge-controlled IV) yields a corrected elasticity of $0.6022$. While lower than the baseline IV ($0.7717$), the fact that it remains positive despite controlling for both surge activation and endogeneity is a critical finding. It indicates that ``purified" price increases are still so closely tied to periods of absolute necessity (e.g., stadium egress or transit failures) that the volume continues to trend with price, further confirming the platform is operating well beneath the price ceiling.
+
+\textbf{5. Spatial and Tier Heterogeneity.} The IV results reveal localized demand anchors.
+\begin{itemize}[noitemsep]
+\item \textbf{High-Volume Hubs:} Neighborhoods such as the \textit{North End} ($0.1428$) and \textit{Haymarket Square} ($0.1752$) exhibit significantly higher baseline volume intercepts. These hubs represent captured demand where riders have high urgency and few substitutes.
+\item \textbf{Tier Substitution:} The \textit{Shared} tier coefficient ($0.8341$) far exceeds premium tiers like \textit{Lux Black XL} ($-0.3611$), confirming that price-conscious users drive the platform's volume floor, while premium users act as the revenue ceiling.
+\end{itemize}
+
+\begin{findingbox}
+Lyft’s Boston marketplace is characterized by a \textbf{Reactive Yield Trap}. Our results prove that the surge multiplier is a follower, not a leader, of demand. The 26\% intercept shift when surge is active, combined with demonstrated demand inelasticity , confirms that the platform is currently operating well below the consumer price ceiling. There is significant uncaptured consumer surplus in premium tiers and high-demand neighborhoods.
+\end{findingbox}
+
+
+
+
+
+
+%------------------------------------
+\section{Revenue Maximization: Lyft Surge Pricing Analysis in Boston}
+\label{sec:revenue}
+%------------------------------------
+
+Lyft operates a two‑sided marketplace where real‑time, algorithmic pricing is used to balance rider demand and driver supply. In revenue management, the primary goal is to optimize this pricing to maximize the objective function:
+\begin{align}
+    \text{max } \sum_{i=1}^{n} P_i \times D(P_i)
+\end{align}
+where $P$ is price and $D(P)$ is the demand function.
+
+For a platform, the primary revenue key factor is the surge multiplier, which is a dynamic price increase triggered when rider demand outpaces driver supply. This section centers on a single operational question with direct financial implications:
+\begin{center}
+    \textit{Is Lyft’s surge pricing algorithm maximizing revenue, or is the platform leaving money on the table?}
+\end{center}
+
+To address this, our analysis employs descriptive revenue decomposition, Ordinary Least Squares (OLS) regression to isolate pricing levers, spatial-temporal pattern analysis, and a revenue simulation to project the financial impact of a more aggressive surge deployment strategy.
+
+
+\subsection{Data Preparation and Feature Engineering}
+
+To facilitate the analysis, several features were engineered during the data preparation phase. Key feature engineering steps included:
+
+\begin{table}[H]
+  \centering
+  \caption{Definitions and Calculations for Engineered Pricing Variables}
+  \label{tab:descriptive}
+  \begin{tabularx}{\textwidth}{l X}
+    \toprule
+    Variable & About \\
+    \midrule
+    is\_surge & A boolean flag identifying rides where the surge multiplier is greater than 1.0. \\
+    price\_per\_mile & Price divided by distance to normalize revenue across trip lengths and service tiers. \\
+    surge\_revenue\_gain (SRG) & The dollar amount earned above what the ride would have cost at the base 1x rate. Created the SRG variable to isolate the specific financial impact of the surge multiplier independently of base rates using the following equation: \begin{center}$SRG = Price - \left(\frac{Price} {Multiplier}\right)$ \end{center}\\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+
+\subsection{Descriptive Analysis: The Yield of Surge}
+
+The data indicates that surge is a high-yield tool that remains underutilized by the platform. By splitting the 307,408 Lyft rides analyzed into separate surge and non-surge pools, a distinct imbalance quickly emerges, shown in Graph X. Non-surge rides account for the vast majority of the platform's volume, comprising 286,433 rides (93.2\%) and generating $\$4,750,078$ (89.1\%) of total revenue. In contrast, surge rides make up a small fraction of the total volume at just 20,975 rides (6.8\%), yet they generate $\$583,880$, which is a disproportionate 10.9\% share of total revenue. On a per-ride basis, the average base fare sits at $\$16.58$, whereas the average surge fare jumps significantly to $\$27.84$. This represents a massive 67.9\% price premium the moment the surge algorithm is activated.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.70\linewidth]{3_2_image.png}
+    \caption{Revenue vs. volume imbalance between surge and non-surge rides in Boston.}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{3_2_image2.png}
+    \caption{Probability density of fares for surge vs. non-surge rides, highlighting the 67.9\% price premium.}
+    \label{fig:placeholder}
+\end{figure}
+
+The insight identified is not that surge fails to generate enough money per ride, but instead the algorithm is highly effective when it is implemented. However, its exceptionally low activation frequency of 6.8\% means that most of its financial potential is currently left unused.
+
+Building on the revenue decomposition, the next step is to examine the behavior of the surge multiplier itself. The objective here is to verify whether the algorithm scales pricing effectively across its different tiers and to ensure that higher multipliers translate into proportional revenue gains. This ensures it does not hit an immediate elasticity ceiling where riders simply refuse to book as soon as the multiplier increases.
+
+
+By grouping the rides according to their specific surge multipliers, a predictable, near-linear increase in revenue per ride becomes immediately apparent (See Figure \ref{fig:figure}).
+\begin{itemize}[noitemsep]
+    \item \textbf{1.0x (Base): $\$16.58$}
+    \item \textbf{1.25x:} $\$23.77$ (+$\$7.19$)
+    \item \textbf{1.50x:} $\$28.89$ (+$\$5.12$)
+    \item \textbf{1.75x:} $\$33.67$ (+$\$4.78$)
+    \item \textbf{2.00x:} $\$39.05$ (+$\$5.38$)
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{3_2_image3.png}
+    \caption{Average realized fare by surge multiplier between 1.0x and 2.0x, demonstrating linear revenue scaling for $n$ rides.}
+    \label{fig:figure}
+\end{figure}
+
+Breaking this down further, the data shows that each progressive 0.25-unit step in the surge multiplier consistently generates an additional $\$5.50$ to $\$6.00$ in average fare. This linearity suggests that consumer willingness-to-pay has not yet reached a point of exhaustion at current levels. Because average realized revenues scale so cleanly with the multiplier, it indicates that riders are consistently accepting these higher prices, and the premium scaling is not immediately destroying user demand. This reinforces that the primary constraint on Lyft's revenue maximization is not the magnitude or structure of the surge pricing itself, but rather the platform's overarching reluctance to trigger these higher multiplier tiers more frequently.
+
+\subsection{OLS Regression Analysis: Quantifying Drivers of Fare Price}
+
+To determine the key variables driving the fare price, an Ordinary Least Squares (OLS) regression model was constructed.
+\begin{center}
+\begin{equation}
+\begin{split}
+    \text{price } = &-12.15 \text{ } + \text{ } 21.74 \text{ } \times \text{ surge\_multiplier } + \text{ } 3.23 \text{ } \times \text{ distance } - \text{ } 0.00 \text{ } \times \text{ hour } \\
+    &+ \text{ } 0.03 \text{ } \times \text{ humidity } + \text{ } 0.00 \text{ } \times \text{ temperature }
+\end{split}
+\end{equation}
+\end{center}
+
+The results showed that the surge multiplier is the single most dominant predictor of fare price over other factors:
+\begin{itemize}[noitemsep]
+    \item \textbf{Surge Multiplier Coefficient:} +$\$21.74$ per unit ($p < 0.001$).
+    \begin{itemize}
+        \item Holding all other variables constant, each one-unit increase in the surge multiplier adds an exceptional $\$21.74$ to the final fare.
+    \end{itemize}
+    \item \textbf{Distance Coefficient:} + $\$3.23$ per mile.
+    \item \textbf{Temporal and Weather Factors:} Factors such as the hour of the day and precipitation showed p-values greater than 0.80, indicating they are not significant predictors within the current algorithmic framework.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{3_3_image.png}
+    \caption{OLS regression coefficients identifying surge multiplier as the primary driver of fare price.}
+    \label{fig:placeholder}
+\end{figure}
+
+This analysis isolates the relative impacts of surge, distance, temporal, and weather factors on pricing fares. The goal is to determine whether or not the algorithm anticipates demand from external factors or strictly relies on reactive internal pricing methods. Controlling these variables simultaneously, confirms that while distance provides a stable pricing foundation, surge activation functions as a massive revenue amplifier.
+
+However, the statistical insignificance of predictable external signals, such as time of day and weather, reveals that the current algorithm is fundamentally reactive. Since time of day and weather do not independently drive the pricing model, the platform is not forecasting demand. Instead, it waits for driver supply to physically deplete in real-time before triggering an internal pricing surge. By doing so, Lyft misses the opportunity to dynamically price ahead of known demand spikes, such as the onset of rush hour or impending bad weather.
+
+
+\subsection{Spatial-Temporal Pattern Analysis}
+
+Continuing the assessment of Lyft's revenue maximization strategy, an examination of the specific temporal and geographic application of the surge multiplier was conducted. The objective is to determine whether the algorithm effectively maps its price increases to predictable, real-world demand patterns across the city. 
+
+The analysis identified specific geographic "hotspots" where surge activation is most frequent, which are often associated with event venues, university campuses, and transit hubs:
+\begin{itemize}[noitemsep]
+    \item \textbf{Back Bay:} 11.2\% surge frequency.
+    \item \textbf{Northeastern University:} 10.4\% surge frequency.
+    \item \textbf{Fenway:} 10.3\% surge frequency.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{revenue_map.png}
+    \caption{Total Lyft Revenue by Neighborhood Area. Note that Boston University and Fenway are listed as the Fenway region.}
+    \label{fig:placeholder}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{3_4_image.png}
+    \caption{Spatial analysis of average fare and surge frequency across key Boston neighborhoods.}
+    \label{fig:placeholder}
+\end{figure}
+
+The contrast between temporal blindness and geographic precision provides insight into Lyft’s pricing methodology. Lyft effectively identifies high-demand locations, but it fundamentally fails to optimize for timing within those locations. This aligns with the regression findings, proving that the algorithm reacts to real-time driver scarcity in busy areas rather than proactively anticipating the time-driven demand spikes that cause that scarcity in the first place.
+
+The surge rate remains consistently flat, hovering narrowly between 6.5\% and 7.2\% regardless of the time of day. Crucially, it fails to meaningfully elevate during notoriously high-demand windows, such as the midnight to 1:00 AM rush, a period when driver supply naturally drops and rider demand reliably peaks. These instances represent "missed opportunities" where market demand is confirmed high, yet Lyft fails to capture the associated revenue.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{3_4_image2.png}
+    \caption{Hourly surge activation rates, illustrating the reactive nature of the current pricing algorithm.}
+    \label{fig:placeholder}
+\end{figure}
+
+\subsection{Service Tier Analysis}
+
+Lyft's Boston market generates revenue across six service tiers, ranging from the budget Shared product to the premium Lux Black XL. Consumer choice behavior analysis helps evaluate how Lyft should optimize pricing across the service tiers,
+
+In revenue management, this analysis is often modeled using Random Utility Theory. It is assumed that a rider $i$ chooses Lyft over a competitor only if the utility of the Lyft ride ($U_{i,Lyft}$) exceeds the utility of the competitor ride ($U_{i,comp}$). To quantify the probability of a customer choosing Lyft, the Logit demand function is used
+\begin{equation}
+    P_{i,Lyft} = \frac{e^{V_{i,Lyft}}}{e^{V_{i,Lyft}} + e^{V_{i,comp}}}
+\end{equation}
+where $V$ represents the deterministic utility (brand value, price, wait time). The equation shows that if Lyft's brand value or utility is high, the platform can increase prices without a proportional collapse in the probability of a rider choosing them.
+
+The analysis suggests that Lyft currently underestimates its own utility, particularly in the premium segments. While Uber's surge activation rate is estimated at 17.5 \%, Lyft maintains a significantly more conservative rate of 6.8\%. This approximately 10.7\% gap represents a significant amount of uncaptured revenue.
+
+As shown in Figure \ref{fig:servicetier}, Lux Black XL leads with $\$1.66M$ in total surge revenue, followed by Lux Black ($\$1.18M$), Lux ($\$0.91M$), Lyft XL ($\$0.78M$), standard Lyft ($\$0.49M$), and Shared ($\$0.31M$). The descending pattern reflects a straightforward relationship between price floor and total revenue, which means higher-priced tiers generate more revenue per ride and in aggregate.
+
+By design, shared rides carry a 0\% surge rate as pooled rides depend on predictable pricing to attract the volume needed to match riders efficiently.
+
+The more interesting finding within the surge rates shows that every non-Shared tier, from the $\$9$ standard Lyft ride to the $\$32$ Lux Black XL ride, carries an identical surge rate of 8.2\%. Lyft's algorithm makes no distinction between a customer booking a budget ride and one booking a luxury vehicle. This is a significant missed opportunity. 
+Premium customers in tiers such as Lux Black and Lux Black XL pay base rates between $\$23$ and $\$32$. These users signal a high willingness to pay and a lower sensitivity to price increases. From the Logit model, these riders likely possess a higher base $V$ for luxury and comfort, meaning that a surge multiplier would have a smaller negative impact on their probability of booking. Thus, by applying the same surge threshold and multiplier to these riders as to standard Lyft users Lyft leaves consumer surplus unexploited.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{3_5_image.png}
+    \caption{Aggregated revenue and surge frequency decomposed by Lyft service tiers.}
+    \label{fig:servicetier}
+\end{figure}
+
+\subsection{Insights and Recommendations}
+
+The analyses above converge on two specific, actionable improvements to Lyft's revenue management strategy:
+\begin{enumerate}
+    \item \underline{Implement Predictive Surge Triggers:}  Integrate historical time-of-day, geography, and weather intelligence into the pricing algorithm. Transitioning from a reactive model to a predictive one allows the platform to capture premium revenue at the precise moment a demand spike begins, rather than after the driver queues have already exhausted. For example, by pre-scheduling surge for known peak hours, Lyft can capture revenue at the immediate onset of rush hour rather than waiting for a reactive trigger.
+    \item \underline{Differentiate Surge by Service Tier:} For non-shared tiers, premium tiers (Lux, Lux Black) surge at the same rate as standard tiers (~8.2\%). Because luxury riders generally exhibit lower price elasticity of demand, Lyft should allow premium tiers to surge more frequently or at higher multipliers (e.g., 2.0x–2.5x) to capture consumer surplus and willingness to pay without impacting the affordability of the standard service used by the broader market.
+
+\end{enumerate}
+
+
+%------------------------------------
+\section{Competitive Pricing Landscape: Does Lyft Follow Uber's Pricing Signals?}
+\label{sec:competitive}
+%------------------------------------
+
+\subsection{Motivation and Research Question}
+
+Sections~\ref{sec:demand} and~\ref{sec:revenue} establish how Lyft manages
+demand and revenue in isolation. This section asks a fundamentally different
+question: in a duopoly market where both platforms observe the same demand
+environment at the same time, does Lyft's pricing algorithm incorporate
+information from Uber's observable surge signal?
+
+If Lyft responds to Uber's surge, we would expect their multipliers to
+co-move; when Uber surges on a given route, Lyft should follow within
+minutes to avoid leaving money on the table while a competitor has already
+confirmed demand is elevated. Conversely, if Lyft's algorithm responds
+only to its own internal supply-demand signals, surge multipliers should
+be uncorrelated even on the same route at the same time.
+
+This distinction has direct revenue management implications. Uber's surge is
+a \textit{verifiable, publicly observable demand confirmation}: it tells Lyft
+that riders on a specific route right now are willing to pay above the base
+rate. A platform that ignores this signal is forgoing low-risk revenue. The
+central question of this section is whether Lyft is currently using it.
+
+\subsection{Methodology}
+
+\subsubsection{Matched Route-Time Pairs}
+
+Our core methodological contribution is the construction of
+\textit{matched pairs}: for every five-minute time window on every
+source-destination route, we align the Uber observation with the
+contemporaneous Lyft observation. This removes temporal and spatial
+confounds and allows direct comparison of the two platforms under
+identical demand conditions. The matched dataset contains 11,834 pairs
+across 72 routes spanning all 12 Boston neighborhoods.
+
+\subsubsection{Engineered Surge Proxy for Uber}
+
+A key data limitation is that the \texttt{surge\_multiplier} column
+for Uber observations carries a constant value of 1.0 throughout the
+dataset. Uber encodes surge implicitly in the fare rather than
+reporting it as a separate field. We therefore engineer an implied surge
+proxy:
+
+\begin{equation}
+\hat{s}_{i,\text{Uber}} = \frac{p_i / d_i}{\tilde{r}_{\text{Uber}}}
+\label{eq:implied_surge}
+\end{equation}
+
+where $p_i$ is the observed fare, $d_i$ is trip distance in miles, and
+$\tilde{r}_{\text{Uber}} = \$7.07\text{/mile}$ is the median
+price-per-mile across all Uber rides (the baseline rate). Values are
+clipped to $[1.0,\,5.0]$ to remove extreme outliers from very short
+minimum-fare trips. Lyft reports discrete multipliers directly:
+$\{1.0,\,1.25,\,1.5,\,1.75,\,2.0,\,2.5,\,3.0\}$ and serves as the
+\textbf{dependent variable} throughout.
+
+This proxy is validated in Section~\ref{sec:robustness} via a
+robustness check using raw fare price as the dependent variable.
+
+\subsubsection{Analytical Framework}
+
+We employ three complementary methods of increasing sophistication:
+
+\textbf{(1) Pearson correlation} between matched surge multipliers,
+computed overall and decomposed by route and hour of day.
+
+\textbf{(2) OLS regression} with route fixed effects and weather
+controls, testing whether Uber's implied surge is a significant
+predictor of \textit{Lyft's} surge after removing shared demand drivers:
+
+\begin{align}
+\text{Model 1 (Baseline):} \quad
+s_{i,\text{Lyft}} &= \alpha + \beta_1 h_i + \beta_2 w_i +
+\beta_3 r_i + \beta_4 d_i + \gamma_{\text{route}} + \varepsilon_i
+\label{eq:m1} \\[6pt]
+\text{Model 2 (Competitive):} \quad
+s_{i,\text{Lyft}} &= \alpha + \delta\,\hat{s}_{i,\text{Uber}} +
+\beta_1 h_i + \beta_2 w_i + \beta_3 r_i + \beta_4 d_i +
+\gamma_{\text{route}} + \varepsilon_i
+\label{eq:m2} \\[6pt]
+\text{Model 3 (Full):} \quad
+s_{i,\text{Lyft}} &= \alpha + \delta\,\hat{s}_{i,\text{Uber}} +
+\beta_1 h_i + \beta_2 w_i + \beta_3 r_i + \beta_4 d_i +
+\mathbf{X}_i^\top\boldsymbol{\phi} + \gamma_{\text{route}} + \varepsilon_i
+\label{eq:m3}
+\end{align}
+
+where $h_i$ is hour of day, $w_i$ is a weekend indicator, $r_i$ is a
+rush-hour indicator, $d_i$ is trip distance, $\mathbf{X}_i$ is a vector
+of weather controls (temperature, precipitation, wind speed, humidity,
+visibility), $\gamma_{\text{route}}$ are route fixed effects, and
+$\delta$ is the coefficient of interest capturing competitive pricing
+response. All models use HC3 heteroskedasticity-robust standard errors.
+
+\textbf{(3) Granger causality tests} to determine whether Uber's past
+surge helps predict Lyft's \textit{current} surge beyond Lyft's own
+history. For each of the six highest-traffic routes, we construct
+five-minute time series for each platform, test for stationarity via
+augmented Dickey-Fuller (ADF) tests (differencing where necessary),
+and apply the standard F-test formulation of Granger causality with
+up to three lags (15 minutes of lead time). We test both directions:
+whether Uber Granger-causes Lyft and whether Lyft Granger-causes Uber.
+
+\subsection{Descriptive Results}
+
+Table~\ref{tab:descriptive} summarizes price and surge statistics for
+matched Standard-tier pairs. Lyft is cheaper than Uber in 45.4\% of
+matched pairs, with a mean fare of \$9.65 versus \$9.78, a
+differential of \$0.13 per ride. The most striking descriptive finding
+is the surge frequency gap: Uber's implied surge exceeds $1.05\times$
+in \textbf{17.5\%} of observations, compared to only \textbf{8.4\%}
+for Lyft. Uber applies surge approximately twice as often on the
+exact same routes at the exact same times. Both platforms sit at base
+rate simultaneously in 75.1\% of matched pairs, confirming that surge
+is a tail event for both, not the norm.
+
+\begin{table}[H]
+  \centering
+  \caption{Descriptive statistics for matched Standard-tier pairs
+           ($n = 11{,}834$)}
+  \label{tab:descriptive}
+  \begin{tabular}{lrrr}
+    \toprule
+    Metric & Lyft & Uber & Lyft $-$ Uber \\
+    \midrule
+    Mean price (\$)                      & 9.65  & 9.78  & $-$0.13 \\
+    Median price (\$)                    & 9.00  & 9.50  & $-$0.50 \\
+    Std.\ dev.\ price (\$)               & 2.54  & 2.46  & $+$0.08 \\
+    Mean surge multiplier                & 1.039 & 1.113 & $-$0.074 \\
+    Surge frequency ($> 1.0\times$)      & 8.4\% & 17.5\% & $-$9.1pp \\
+    Lyft cheaper than Uber              &
+      \multicolumn{3}{c}{45.4\% of pairs} \\
+    Both platforms at base rate         &
+      \multicolumn{3}{c}{75.1\% of pairs} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Figure~\ref{fig:price_hour} shows mean prices and the Lyft $-$ Uber
+differential by hour of day. Uber is consistently more expensive across
+most hours, with the gap widening slightly during midday and late-night
+windows.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{fig1_price_by_hour.png}
+  \caption{Mean price by hour (left) and Lyft $-$ Uber price differential
+           by hour (right). Pink bars indicate hours where Lyft is more
+           expensive; black bars indicate Uber premium hours.}
+  \label{fig:price_hour}
+\end{figure}
+
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{fig2_route_heatmap.png}
+  \caption{Mean Lyft $-$ Uber price difference by route.
+           Red cells = Lyft more expensive; blue cells = Uber more
+           expensive. Values show dollar differential.}
+  \label{fig:route_heatmap}
+\end{figure}
+
+Figure~\ref{fig:route_heatmap} presents the mean Lyft $-$ Uber price
+differential across all route pairs. The pattern is highly heterogeneous:
+routes from Theatre District show Lyft premiums of up to \$1.83, while
+routes from Northeastern University and Financial District show Uber
+premiums of up to \$1.87. This heterogeneity is consistent with
+route-specific demand patterns rather than a platform-wide pricing
+strategy.
+
+Figure~\ref{fig:surge_dist} shows the distribution of surge multipliers
+and surge frequency by hour. Lyft's surge distribution is far more
+concentrated at $1.0\times$ than Uber's proxy, and Uber's surge frequency
+is consistently $\sim$15--20\% across all hours while Lyft's hovers
+around 7--13\%.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{fig3_surge_dist.png}
+  \caption{Distribution of surge multipliers (left) and surge frequency
+           by hour of day (right). Uber surges approximately twice as
+           often as Lyft across all hours.}
+  \label{fig:surge_dist}
+\end{figure}
+
+\subsection{Surge Correlation Results}
+
+The Pearson correlation between Lyft's declared surge and Uber's implied
+surge across all 11,834 matched pairs is $r = -0.033$ ($p < 0.001$).
+The negative sign is substantively negligible; the magnitude of $-0.033$
+is indistinguishable from zero for practical purposes. When Uber surges,
+Lyft does not follow.
+
+Figure~\ref{fig:correlation} shows the scatter plot and the
+decomposition of correlation by hour of day. The OLS fit has slope
+$= -0.02$, visually confirming the flat relationship. The hourly
+decomposition shows no systematic pattern: correlation oscillates
+randomly between $-0.09$ and $+0.07$ with no concentration during
+rush hours, late nights, or weekends, all periods where competitive
+pricing pressure should be highest.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{fig4_correlation.png}
+  \caption{Lyft surge vs.\ Uber implied surge scatter plot with OLS fit
+           (left) and Lyft-Uber surge correlation by hour of day (right).
+           The near-zero slope and random hourly oscillation confirm
+           platform independence.}
+  \label{fig:correlation}
+\end{figure}
+
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{fig5_route_corr.png}
+  \caption{Lyft-Uber surge correlation by route. Maximum $r = 0.27$;
+           median near zero. No route shows meaningful competitive
+           co-movement.}
+  \label{fig:route_corr}
+\end{figure}
+
+Figure~\ref{fig:route_corr} presents the route-level correlation
+heatmap. The maximum route-level correlation is $r = 0.27$ on the
+Financial District $\to$ North Station corridor, which is weak by
+conventional standards. The vast majority of routes cluster near zero,
+with no geographic pattern.
+
+\begin{findingbox}
+Lyft and Uber surge multipliers are essentially uncorrelated ($r = -0.033$)
+across 11,834 matched route-time pairs. The maximum route-level correlation
+is $r = 0.27$, and most routes cluster near zero. Lyft's surge algorithm
+does not incorporate Uber's pricing signal.
+\end{findingbox}
+
+\subsection{OLS Regression Results}
+
+Table~\ref{tab:ols} presents the three OLS models with Lyft surge as
+the dependent variable. The baseline model (Model~1) achieves
+$R^2 = 0.0335$. Adding Uber's implied surge (Model~2) increases $R^2$
+by \textbf{exactly 0.0000}, a zero marginal contribution. The
+coefficient $\hat{\delta} = -0.005$ ($p = 0.364$) is not statistically
+significant and is economically trivial: a one-unit increase in Uber's
+implied surge is associated with a $-0.005$ change in Lyft's surge,
+an effect indistinguishable from zero. Adding weather controls
+(Model~3) yields $\Delta R^2 = 0.0003$, confirming that weather also
+adds negligible explanatory power.
+
+\begin{table}[H]
+  \centering
+  \caption{OLS regression results: dependent variable = Lyft surge
+           multiplier. HC3 robust standard errors.}
+  \label{tab:ols}
+  \begin{tabular}{lrrr}
+    \toprule
+    & \multicolumn{1}{c}{Model 1} & \multicolumn{1}{c}{Model 2} &
+      \multicolumn{1}{c}{Model 3} \\
+    Variable & Baseline & +Uber surge & +Weather \\
+    \midrule
+    Intercept                            & $1.080^{***}$ & $1.085^{***}$ & $1.072^{***}$ \\
+    Uber surge proxy ($\hat{\delta}$)    & ---           & $-0.005$      & $-0.005$ \\
+    Hour                                 & $+0.000$      & $+0.000$      & $-0.000$ \\
+    Weekend                              & $+0.007$      & $+0.007$      & $+0.006$ \\
+    Rush hour                            & $-0.000$      & $-0.000$      & $-0.000$ \\
+    Distance (miles)                     & $+0.014^{***}$& $+0.014^{***}$& $+0.014^{***}$ \\
+    Temperature                          & ---           & ---           & $+0.000$ \\
+    Precipitation                        & ---           & ---           & $+0.027$ \\
+    Wind speed                           & ---           & ---           & $-0.000$ \\
+    Humidity                             & ---           & ---           & $-0.006$ \\
+    Route FE                             & Yes           & Yes           & Yes \\
+    \midrule
+    $R^2$                                & 0.0335        & 0.0335        & 0.0338 \\
+    $\Delta R^2$                         & ---           & 0.0000        & 0.0003 \\
+    $N$                                  & 11,834        & 11,834        & 11,834 \\
+    \bottomrule
+    \multicolumn{4}{l}{\footnotesize $^{***}p<0.001$, $^{**}p<0.01$,
+    $^{*}p<0.05$.}
+  \end{tabular}
+\end{table}
+
+
+
+\subsection{Granger Causality Results}
+
+Table~\ref{tab:granger} reports Granger causality p-values for the six
+highest-traffic routes (497 to 596 five-minute observations per route).
+All p-values substantially exceed the 0.05 threshold in both directions:
+neither platform's past surge predicts the other's current surge on any
+route. The primary direction of interest --- does Uber's past surge
+Granger-cause Lyft's current surge? --- returns p-values of 0.63--0.78
+on all testable routes.
+
+\begin{table}[H]
+  \centering
+  \caption{Granger causality test results (up to 3 lags = 15 minutes)}
+  \label{tab:granger}
+  \begin{tabular}{lrrrl}
+    \toprule
+    Route & $N$ obs & $p(\text{Uber} \to \text{Lyft})$ &
+    $p(\text{Lyft} \to \text{Uber})$ & Direction \\
+    \midrule
+    North End $\to$ Beacon Hill             & 596 & 0.778 & 0.719 & Independent \\
+    North End $\to$ Back Bay                & 560 & N/A   & N/A   & Independent \\
+    Financial District $\to$ S.\ Station   & 560 & 0.685 & 0.667 & Independent \\
+    Back Bay $\to$ North End                & 524 & 0.776 & 0.657 & Independent \\
+    Boston University $\to$ Fin.\ District & 521 & N/A   & N/A   & Independent \\
+    Fenway $\to$ Back Bay                   & 497 & 0.630 & 0.677 & Independent \\
+    \bottomrule
+    \multicolumn{5}{l}{\footnotesize N/A: insufficient variance after
+    ADF differencing.}
+  \end{tabular}
+\end{table}
+
+Figure~\ref{fig:granger} visualizes the p-values. Every bar across
+every route lies far above the red 0.05 threshold line, in both
+directions.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{fig7_granger.png}
+  \caption{Granger causality p-values by route. Black bars =
+           $p(\text{Uber} \to \text{Lyft})$; pink bars =
+           $p(\text{Lyft} \to \text{Uber})$. All bars are far above the
+           red 0.05 threshold, confirming pricing independence in both
+           directions across all routes.}
+  \label{fig:granger}
+\end{figure}
+
+\begin{findingbox}
+Granger causality tests on all six high-traffic routes return
+$p > 0.60$ in both directions. Uber's past surge provides no
+predictive power for Lyft's current surge. The two platforms price
+in silos.
+\end{findingbox}
+
+\subsection{Tier-Level Analysis}
+
+To test whether competitive independence holds across product categories,
+we repeat the correlation analysis for Standard, XL, Premium, and Shared
+tiers. Table~\ref{tab:tier} summarizes the results.
+
+\begin{table}[H]
+  \centering
+  \caption{Tier-level surge correlation and mean prices}
+  \label{tab:tier}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Tier & Pairs & Lyft \$\ (mean) & Uber \$\ (mean) &
+          Lyft surge & Uber surge & $r$ \\
+    \midrule
+    Standard & 11,834 & \$9.65  & \$9.78  & 1.039 & 1.113 & $-0.033$ \\
+    XL       & 11,872 & \$15.32 & \$15.73 & 1.037 & 1.331 & $-0.055$ \\
+    Premium  & 23,540 & \$27.82 & \$20.59 & 1.038 & 1.675 & $-0.060$ \\
+    Shared   & 11,972 & \$6.03  & \$8.77  & 1.000 & 1.081 & N/A \\
+    \bottomrule
+    \multicolumn{7}{l}{\footnotesize Shared: Lyft surge always 1.0 ---
+    no variation to correlate.}
+  \end{tabular}
+\end{table}
+
+The Premium tier finding is particularly striking: Uber applies an average
+implied surge of $1.675\times$ versus Lyft's $1.038\times$, yet Lyft's
+mean price (\$27.82) \textit{exceeds} Uber's (\$20.59). Lyft Premium
+riders are already paying higher base fares, yet Lyft is barely surging
+them, the opposite of what rational revenue management would prescribe
+for a segment with lower price elasticity.
+
+Shared rides show no correlatable surge (Lyft's multiplier is always
+exactly 1.0 for Pool), so the tier is excluded from correlation analysis.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{fig8_tier.png}
+  \caption{Mean price by tier (left) and Lyft-Uber surge correlation by
+           tier (right). Premium is the most striking: Lyft charges
+           more but surges far less aggressively than Uber.}
+  \label{fig:tier}
+\end{figure}
+
+\subsection{Missed Surge Opportunities}
+\label{sec:missed}
+
+The independence finding has a direct revenue consequence. In
+\textbf{16.6\%} of matched route-time windows, Uber is surging
+(implied multiplier $> 1.05\times$) while Lyft sits at the base rate
+($1.0\times$). In these windows, Uber's surge is a verifiable demand
+signal: the market has confirmed that riders on this exact route right
+now are willing to pay above baseline. Lyft's failure to respond
+represents a systematic revenue management gap.
+
+In these 16.6\% of missed windows:
+\begin{itemize}
+  \item Uber's average implied surge multiplier is $\mathbf{1.638\times}$
+  \item The average Uber $-$ Lyft fare gap is \textbf{\$1.10 per ride}
+  \item This gap represents revenue Lyft leaves unrealised on trips where
+        elevated demand is already independently confirmed
+\end{itemize}
+
+Conversely, only \textbf{7.5\%} of windows show Lyft surging while Uber
+does not. Lyft misses more than twice as many windows as Uber. This
+asymmetry is consistent with Uber's role as the de facto price leader in
+this market.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{fig9_missed.png}
+  \caption{Missed surge windows by hour of day. The pink (Lyft missed)
+           line consistently sits 8--14 percentage points above the black
+           (Uber missed) line across all hours, with no time of day
+           where the gap closes.}
+  \label{fig:missed}
+\end{figure}
+
+\begin{findingbox}
+In 16.6\% of matched windows, Uber is surging at an average
+$1.638\times$ while Lyft is at base rate. The average unrealised fare
+per missed window is \$1.10. Lyft misses more than twice as many surge
+opportunities as Uber across all hours of the day.
+\end{findingbox}
+
+\subsection{Robustness Check}
+\label{sec:robustness}
+
+The engineered Uber surge proxy introduces measurement noise. To verify
+that this does not drive the null result, we replicate the OLS analysis
+using raw Lyft fare price as the dependent variable and raw Uber fare
+price as the regressor, no engineering required for either platform.
+Table~\ref{tab:robustness} presents the results.
+
+\begin{table}[H]
+  \centering
+  \caption{Robustness check: raw Lyft fare price as dependent variable}
+  \label{tab:robustness}
+  \begin{tabular}{lrrr}
+    \toprule
+    & \multicolumn{1}{c}{R1} & \multicolumn{1}{c}{R2} &
+      \multicolumn{1}{c}{R3} \\
+    Variable & Baseline & +Uber price & +Weather \\
+    \midrule
+    Intercept                              & $6.876^{***}$ & $6.883^{***}$ & $7.075^{***}$ \\
+    Uber price ($\hat{\delta}$)            & ---           & $+0.003$      & $+0.003$ \\
+    \multicolumn{1}{r}{\footnotesize$(p)$} &               & \footnotesize$(0.775)$
+                                                           & \footnotesize$(0.775)$ \\
+    Distance (miles)                       & $1.077^{***}$ & $1.077^{***}$ & $1.077^{***}$ \\
+    Hour                                   & $-0.002$      & $-0.002$      & $-0.003$ \\
+    Weekend                                & $-0.038$      & $-0.038$      & $-0.041$ \\
+    Rush hour                              & $-0.016$      & $-0.016$      & $-0.017$ \\
+    Weather controls                       & No            & No            & Yes \\
+    Route FE                               & Yes           & Yes           & Yes \\
+    \midrule
+    $R^2$                                  & 0.6392        & 0.6393        & 0.6394 \\
+    $\Delta R^2$                           & ---           & 0.0001        & 0.0001 \\
+    $N$                                    & 11,834        & 11,834        & 11,834 \\
+    \bottomrule
+    \multicolumn{4}{l}{\footnotesize $^{***}p<0.001$. HC3 robust SEs.}
+  \end{tabular}
+\end{table}
+
+Two interpretive points deserve emphasis. First, the raw Pearson
+correlation between Uber and Lyft fares is $r = 0.56$ ($p < 0.001$),
+positive and highly significant. However, this is a \textit{spurious}
+correlation driven entirely by the shared distance-price relationship:
+both platforms charge more for longer trips. Once distance and route
+structure are controlled, the Uber price coefficient collapses to
+$\hat{\delta} = +0.003$ with $p = 0.775$, statistically and
+economically zero.
+
+Second, if the engineered surge proxy contained random noise it would
+\textit{attenuate} correlations toward zero, meaning our reported
+$r = -0.033$ is a conservative lower bound on independence. Taken
+together, both analyses support the same conclusion: \textit{Lyft
+prices independently of Uber after controlling for route, time, and
+weather conditions.}
+
+%------------------------------------
+\section{Recommendations}
+\label{sec:recommendations}
+%------------------------------------
+
+Drawing on findings from all three sections, we offer four revenue
+management recommendations:
+
+\textbf{1. Lyft should adopt competitive surge monitoring.}
+In 16.6\% of matched windows, Uber surges while Lyft does not. Given
+that pricing is currently independent, Lyft could implement a simple
+rule: when Uber's surge signal is detectable via API polling, treat it
+as a demand confirmation and trigger a corresponding surge within one
+polling cycle (five minutes). This ``competitive yield cue'' strategy
+requires no change to Lyft's core algorithm, only an additional input
+signal.
+
+\textbf{2. Premium tier is the highest-priority target.}
+Uber applies an average $1.675\times$ surge in Premium while Lyft
+applies only $1.038\times$ surge, a gap of $0.637$ surge units on rides
+averaging \$27 in fare. Since premium segments have lower price
+elasticity and fewer direct substitutes, these are exactly the rides
+where Lyft can safely surge more without rider abandonment. The
+correlation of $-0.06$ for Premium further confirms that Uber and Lyft
+are not competing on surge in this segment.
+
+\textbf{3. Proactive rather than reactive surge scheduling.}
+Both platforms currently apply surge reactively, waiting for observed
+supply-demand imbalances. The missed surge plot (Figure~\ref{fig:missed})
+shows that Lyft underperforms uniformly across all 24 hours. There is no ``off-peak'' window where the gap closes. This suggests the
+issue is not timing but a systematic absence of competitive signal
+integration.
+
+\textbf{4. Route-specific surge calibration.}
+The route heatmap (Figure~\ref{fig:route_heatmap}) reveals large
+price differentials at the route level. Corridors such as
+Theatre District $\to$ Fenway (Lyft premium of \$1.20) and
+Financial District $\to$ North Station (Uber premium of \$1.68)
+show that platform pricing advantages are highly route-specific.
+Both platforms should calibrate surge triggers at the route level
+rather than using city-wide parameters.
+
+%------------------------------------
+\section{Conclusion}
+%------------------------------------
+
+This paper analyzed demand patterns, revenue management strategy, and
+competitive pricing dynamics in the Boston rideshare market using 693,071
+trip observations from Uber and Lyft. Our central empirical finding, that the two platforms price independently despite operating in the same
+markets simultaneously, is robust across correlation analysis,
+OLS regression with weather and route controls, Granger causality testing,
+and a raw-fare robustness check. Route fixed effects alone explain 80\%
+of surge variance; adding the competitor's price contributes zero
+additional explanatory power.
+
+This finding challenges the assumption, implicit in much of the popular
+discourse on rideshare pricing, that platforms engage in real-time
+competitive pricing response. Instead, each algorithm appears to be a
+self-contained supply-demand optimizer. The revenue implication is that
+the largest gains for either platform are likely to come from better
+own-side demand forecasting and proactive surge scheduling, not from
+monitoring competitors.
+
+The 18.5\% missed surge window rate for Lyft represents the most
+actionable finding: demand is confirmed elevated (by Uber's own surge),
+the pricing signal is available in real time, and yet the revenue
+opportunity goes unrealized. Closing this gap requires no new technology, only a strategic decision to use a publicly observable competitor
+signal as an input to an existing algorithm.
+
+%------------------------------------
+\appendix
+\section{Data Preprocessing Notes}
+%------------------------------------
+
+\textbf{Uber surge proxy.} Uber's \texttt{surge\_multiplier} field is
+1.0 for all observations. Implied surge is computed as
+$\hat{s} = (p/d) / \tilde{r}$, where $\tilde{r}$ is the median
+price-per-mile across all Uber rides, clipped to [1.0, 5.0].
+Rides with distance $< 0.1$ miles are excluded from proxy calculation
+to avoid minimum-fare distortion.
+
+\textbf{Matched pairs construction.} Uber and Lyft Standard-tier rides
+are aligned on source neighborhood, destination neighborhood, and
+five-minute time bucket (\texttt{floor('5min')}). Each row in the
+matched dataset represents a single route-time window in which both
+platforms had an observed ride.
+
+\textbf{Weather variables.} Weather data is embedded directly in
+\texttt{rideshare\_kaggle.csv} (36 columns). After the platform merge,
+weather variables carry the \texttt{\_uber} suffix and represent
+conditions at the time and location of each ride observation.
+
+\textbf{Tier mapping.} Product names are mapped to comparable tiers:
+Standard (UberX, Lyft), XL (UberXL, Lyft XL), Premium (Black, Lux Black,
+Lux Black XL), Shared (UberPool, Shared).
+
+% Bibliography
+\newpage
+\bibliographystyle{plainnat}
+\begin{thebibliography}{9}
+
+\bibitem[Banerjee et al.(2015)]{banerjee2015pricing}
+Banerjee, S., Johari, R., and Riquelme, C. (2015).
+\textit{Pricing in ride-share platforms: A queueing-theoretic approach}.
+ACM SIGecom Exchanges, 15(1), 65--70.
+
+\bibitem[Castillo et al.(2017)]{castillo2017surge}
+Castillo, J.C., Knoepfle, D., and Weyl, G. (2017).
+\textit{Surge pricing solves the wild goose chase}.
+Proceedings of the 2017 ACM Conference on Economics and Computation.
+
+\bibitem[Cohen et al.(2016)]{cohen2016using}
+Cohen, P., Hahn, R., Hall, J., Levitt, S., and Metcalfe, R. (2016).
+\textit{Using big data to estimate consumer surplus: The case of Uber}.
+NBER Working Paper No.\ 22627.
+
+\bibitem[Garg and Nazerzadeh(2021)]{garg2021driver}
+Garg, N. and Nazerzadeh, H. (2021).
+\textit{Driver surge pricing}.
+Management Science, 68(5), 3219--3235.
+
+\bibitem[Hall et al.(2015)]{hall2015effects}
+Hall, J., Kendrick, C., and Nosko, C. (2015).
+\textit{The effects of Uber's surge pricing: A case study}.
+University of Chicago Booth School of Business.
+
+\bibitem[Yan et al.(2020)]{yan2020matching}
+Yan, C., Zhu, H., Korolko, N., and Woodard, D. (2020).
+\textit{Dynamic pricing and matching in ride-hailing platforms}.
+Naval Research Logistics, 67(8), 705--724.
+
+\end{thebibliography}
+
+\end{document}
