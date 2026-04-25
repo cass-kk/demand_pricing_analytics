@@ -1,10 +1,5 @@
 # Uber vs. Lyft: Demand Patterns, Revenue Management, and Competitive Pricing Strategy
 
-**Course:** OM386 - Revenue Management, Demand & Sales Analysis  
-**Institution:** McCombs School of Business, UT Austin  
-**Authors:** Melissa Cai Shi, Mohar Chaudhuri, Cassandre Korvink-Kucinski, Hardy Smith  
-**Date:** April 2025
-
 ---
 
 ## Background
