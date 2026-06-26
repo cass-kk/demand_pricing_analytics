@@ -23,11 +23,11 @@
 \usepackage{enumitem}
 \usepackage{natbib}
 \usepackage{float}
-\usepackage{xurl}
+
 
 % microtype and lmodern removed for compatibility
 
-% Hyperref setup
+% ── Hyperref setup ───────────────────────────────────────────
 \hypersetup{
     colorlinks=true,
     linkcolor=black,
@@ -36,20 +36,20 @@
     pdftitle={Uber vs. Lyft: A Revenue Management Analysis},
 }
 
-% Custom colors
+% ── Custom colors ────────────────────────────────────────────
 \definecolor{uberblack}{RGB}{0,0,0}
 \definecolor{lyftpink}{RGB}{255,0,191}
 \definecolor{sectionblue}{RGB}{26,115,232}
 \definecolor{lightgray}{RGB}{245,245,245}
 
-% Section formatting
+% ── Section formatting ────────────────────────────────────────
 \usepackage{titlesec}
 \titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
 \titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
 \titlespacing*{\section}{0pt}{1.5ex plus .2ex}{1ex plus .2ex}
 \titlespacing*{\subsection}{0pt}{1ex plus .2ex}{0.5ex plus .2ex}
 
-% Header / Footer
+% ── Header / Footer ──────────────────────────────────────────
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
@@ -58,7 +58,7 @@
 \cfoot{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 
-% Abstract box
+% ── Abstract box ─────────────────────────────────────────────
 \newenvironment{abstractbox}{%
   \begin{center}
   \begin{minipage}{0.92\textwidth}
@@ -72,7 +72,7 @@
   \end{center}
 }
 
-% Finding box
+% ── Finding box ──────────────────────────────────────────────
 \usepackage{tcolorbox}
 \tcbuselibrary{skins}
 \newtcolorbox{findingbox}[1][]{
@@ -84,11 +84,11 @@
   #1
 }
 
-%-------------------------------
+% ============================================================
 \begin{document}
-%-------------------------------
+% ============================================================
 
-% Title
+% ── Title Page ───────────────────────────────────────────────
 \begin{titlepage}
   \centering
   \vspace*{2cm}
@@ -111,7 +111,7 @@
 
   \vspace{0.5cm}
 
-  {\normalsize April 2025\par}
+  {\normalsize April 2026\par}
 
   \vspace{1.5cm}
 
@@ -137,13 +137,13 @@
   {\small\textit{Dataset: Uber \& Lyft Boston, MA (Kaggle: brllrb/uber-and-lyft-dataset-boston-ma)}}
 \end{titlepage}
 
-% Table of Contents
+% ── Table of Contents ────────────────────────────────────────
 \tableofcontents
 \newpage
 
-%------------------------------------
+% ============================================================
 \section{Introduction: Uber's Revenue Model and Surge Pricing}
-%------------------------------------
+% ============================================================
 
 Ride-hailing platforms such as Uber and Lyft represent one of the most
 prominent real-world applications of algorithmic revenue management.
@@ -180,7 +180,7 @@ dynamics between Uber and Lyft's pricing algorithms
 (Section~\ref{sec:competitive}).
 
 \textbf{Data.} Our analysis uses the Uber \& Lyft Boston dataset
-(Kaggle: \textit{\xurl{brllrb/uber-and-lyft-dataset-boston-ma}}), which
+(Kaggle: \texttt{brllrb/uber-and-lyft-dataset-boston-ma}), which
 contains 693,071 trip observations across 12 Boston neighborhoods
 collected via direct API queries every five minutes over 22 days
 in late 2018. The dataset contains ride-level price, distance,
@@ -189,10 +189,10 @@ variables including temperature, precipitation intensity, wind speed,
 humidity, and visibility. After cleaning (removing missing prices and
 impossible values), 637,976 rides remain: 385,663 Uber and 307,408 Lyft.
 
-%------------------------------------
+% ============================================================
 \section{Demand Elasticity and Patterns}
 \label{sec:demand}
-%------------------------------------
+% ============================================================
 
 To evaluate Lyft’s revenue management effectiveness, we first establish the baseline variance of ride volume. This section analyzes the temporal, geographical, and environmental drivers of demand before quantifying price elasticity through a series of econometric models designed to isolate the impact of the surge pricing regime.
 
@@ -302,10 +302,10 @@ Lyft’s Boston marketplace is characterized by a \textbf{Reactive Yield Trap}. 
 
 
 
-%------------------------------------
+% ============================================================
 \section{Revenue Maximization: Lyft Surge Pricing Analysis in Boston}
 \label{sec:revenue}
-%------------------------------------
+% ============================================================
 
 Lyft operates a two‑sided marketplace where real‑time, algorithmic pricing is used to balance rider demand and driver supply. In revenue management, the primary goal is to optimize this pricing to maximize the objective function:
 \begin{align}
@@ -488,10 +488,10 @@ The analyses above converge on two specific, actionable improvements to Lyft's r
 \end{enumerate}
 
 
-%------------------------------------
+% ============================================================
 \section{Competitive Pricing Landscape: Does Lyft Follow Uber's Pricing Signals?}
 \label{sec:competitive}
-%------------------------------------
+% ============================================================
 
 \subsection{Motivation and Research Question}
 
@@ -805,7 +805,7 @@ on all testable routes.
   \end{tabular}
 \end{table}
 
-Figure~\ref{fig:granger} visualizes the p-values. Every bar across
+Figure~\ref{fig:granger} visualises the p-values. Every bar across
 every route lies far above the red 0.05 threshold line, in both
 directions.
 
@@ -831,7 +831,7 @@ in silos.
 
 To test whether competitive independence holds across product categories,
 we repeat the correlation analysis for Standard, XL, Premium, and Shared
-tiers. Table~\ref{tab:tier} summarizes the results.
+tiers. Table~\ref{tab:tier} summarises the results.
 
 \begin{table}[H]
   \centering
@@ -966,10 +966,10 @@ together, both analyses support the same conclusion: \textit{Lyft
 prices independently of Uber after controlling for route, time, and
 weather conditions.}
 
-%------------------------------------
+% ============================================================
 \section{Recommendations}
 \label{sec:recommendations}
-%------------------------------------
+% ============================================================
 
 Drawing on findings from all three sections, we offer four revenue
 management recommendations:
@@ -1008,9 +1008,9 @@ show that platform pricing advantages are highly route-specific.
 Both platforms should calibrate surge triggers at the route level
 rather than using city-wide parameters.
 
-%------------------------------------
+% ============================================================
 \section{Conclusion}
-%------------------------------------
+% ============================================================
 
 This paper analyzed demand patterns, revenue management strategy, and
 competitive pricing dynamics in the Boston rideshare market using 693,071
@@ -1035,10 +1035,10 @@ the pricing signal is available in real time, and yet the revenue
 opportunity goes unrealized. Closing this gap requires no new technology, only a strategic decision to use a publicly observable competitor
 signal as an input to an existing algorithm.
 
-%------------------------------------
+% ============================================================
 \appendix
 \section{Data Preprocessing Notes}
-%------------------------------------
+% ============================================================
 
 \textbf{Uber surge proxy.} Uber's \texttt{surge\_multiplier} field is
 1.0 for all observations. Implied surge is computed as
@@ -1062,7 +1062,7 @@ conditions at the time and location of each ride observation.
 Standard (UberX, Lyft), XL (UberXL, Lyft XL), Premium (Black, Lux Black,
 Lux Black XL), Shared (UberPool, Shared).
 
-% Bibliography
+% ── Bibliography ─────────────────────────────────────────────
 \newpage
 \bibliographystyle{plainnat}
 \begin{thebibliography}{9}
